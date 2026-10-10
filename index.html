@@ -28,7 +28,11 @@ button:disabled{opacity:.5;cursor:default}
 .top label{font-size:.95rem}
 .top select{margin-left:6px;border-radius:6px;padding:4px 6px;color:var(--ink)}
 .steps{display:flex;gap:6px;list-style:none;margin:0;padding:0;flex-wrap:wrap}
-.steps li{font-size:.85rem;padding:3px 10px;border-radius:20px;border:1px solid #8b90b8;color:#cfd3f0}
+.steps li{font-size:.85rem;border-radius:20px;border:1px solid #8b90b8;color:#cfd3f0}
+.steps button{all:unset;display:block;padding:3px 10px;border-radius:20px;cursor:pointer}
+.steps button:disabled{cursor:default;opacity:.55}
+.steps button:not(:disabled):hover{text-decoration:underline}
+.steps button:focus-visible{outline:3px solid var(--star);outline-offset:2px}
 .steps li.now{background:var(--star);color:var(--night);border-color:var(--star);font-weight:700}
 .steps li.done{background:#2d335c;color:#fff}
 .factory{max-width:1240px;margin:14px auto 0;padding:0 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
@@ -46,21 +50,31 @@ main{max-width:1240px;margin:0 auto;padding:14px 20px 40px}
 .panel h2{margin:0 0 6px;font-size:1.3rem}
 .lead{margin:0 0 10px;color:var(--muted)}
 .layout{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
-@media (min-width:1100px){.layout{grid-template-columns:minmax(0,5fr) minmax(0,7fr)}}
+@media (min-width:1100px){.layout{grid-template-columns:minmax(0,5fr) minmax(0,7fr);align-items:start}.board{position:sticky;top:8px}}
 .board .row{margin-bottom:12px}
 .row-label{font-weight:700;font-size:.95rem;margin-bottom:6px}
 .slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
 .slot{min-height:96px;border:2px dashed #9aa0b8;border-radius:10px;padding:8px;background:#fafbfd;position:relative}
 .slot .cap{font-size:.85rem;color:var(--muted)}
 .slot.ready{border-color:var(--focus);background:#eef4fc}
-.slot.over{background:#dfeafa}
+.slot.over{border-style:solid!important;border-color:var(--focus)!important;background:#d3e3f8!important;box-shadow:0 0 0 4px #b8d0f0}
+.slot.over .cap::after{content:"  Drop here";font-weight:700;color:var(--focus)}
+body.dragging .slot:not(.ok){border-color:var(--focus);background:#eef4fc}
+body.dragging,body.dragging *{cursor:grabbing!important;user-select:none}
+.ghost{position:fixed;left:0;top:0;z-index:1000;pointer-events:none;background:#fff;border:2px solid var(--night);border-radius:8px;padding:6px 12px;font-weight:700;box-shadow:0 6px 18px rgba(0,0,0,.25);max-width:240px;white-space:nowrap}
+.dragsrc{opacity:.35}
+.handle{display:flex;gap:8px;align-items:flex-start;touch-action:none;cursor:grab}
+.grip{flex:none;color:var(--muted);margin-top:2px}
+.remove{position:absolute;top:5px;right:5px;width:28px;height:28px;border-radius:50%;border:2px solid var(--ink);padding:0;font-size:17px;line-height:1;display:grid;place-items:center;background:#fff}
+.remove:hover,.remove:focus-visible{background:var(--bad);color:#fff;border-color:var(--bad)}
 .slot.ok{border:2px solid var(--ok);background:#eef8f2}
 .slot.ok::after{content:"Correct";position:absolute;top:6px;right:8px;font-size:.8rem;font-weight:700;color:var(--ok)}
-.mini{margin-top:4px;border-radius:8px;border:1.5px solid var(--ink);padding:6px 8px;background:#fff}
+.mini{position:relative;margin-top:4px;border-radius:8px;border:1.5px solid var(--ink);padding:6px 38px 6px 8px;background:#fff;touch-action:none;cursor:grab;user-select:none}
+.slot.ok .mini{cursor:default;padding-right:8px}
 .mini b{display:block}
 .tray{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
 .tray-empty{color:var(--muted)}
-.card{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.card{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;user-select:none;cursor:grab}
 .card[data-selected="true"]{border-color:var(--focus);box-shadow:0 0 0 3px #b8d0f0}
 .card h3{margin:0;font-size:1.15rem}
 .tr{display:block;font-size:.95rem;color:var(--muted)}
@@ -88,6 +102,12 @@ textarea{min-height:110px}
 .err{color:var(--bad);font-size:.9rem;min-height:1.2em;margin:4px 0 0}
 .frame{color:var(--muted);font-size:.95rem;margin:4px 0}
 .summary{white-space:pre-wrap;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-family:inherit}
+.startable{overflow-x:auto;margin-top:8px}
+.startable table{border-collapse:collapse;width:100%;min-width:640px}
+.startable th,.startable td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top;font-size:.95rem}
+.startable th{background:var(--paper)}
+.startable select{font:inherit;padding:4px;border-radius:6px;border:2px solid #9aa0b8;max-width:100%}
+.review-note{margin:0 0 10px;color:var(--muted)}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion:reduce){.el.lit{animation:none}}
 </style>
@@ -122,19 +142,19 @@ const CONFIG = {
   formPrefillUrl: ""
 };
 /* ============================================== */
-const DATA = {"cards": [{"id": 1, "name": "Nebula", "path": "all", "path_label": "All stars", "made": [], "present": ["H", "He"], "contains": "Mostly hydrogen and helium from the Big Bang, plus a little star stuff from older stars.", "released": "Already in space.", "hint": "Hint: this is the very first card. Stars are born here.", "front": "Stars are born in a nebula, a giant cloud of gas and dust in space. It is mostly hydrogen and helium from the Big Bang. It also holds small amounts of other elements left by older stars. In the Pillars of Creation, new stars are forming right now.", "next": "Gravity pulls the gas and dust together...", "badge": null, "es": "nebulosa", "zh": "星雲", "ar": "سديم", "art": "nebula"}, {"id": 2, "name": "Protostar", "path": "all", "path_label": "All stars", "made": [], "present": ["H", "He"], "contains": "Nothing new is made yet. There is no fusion.", "released": "No.", "hint": "Hint: comes after the cloud of gas and dust. Gravity pulls it into a ball.", "front": "Gravity pulls the gas and dust together. The ball of gas gets smaller and denser. The center gets hotter and hotter. It glows, but it is not a star yet. There is no fusion.", "next": "The core reaches 10 million K...", "badge": null, "es": "protoestrella", "zh": "原恆星", "ar": "نجم أولي", "art": "protostar"}, {"id": 3, "name": "Main sequence star", "path": "all", "path_label": "All stars", "made": ["He"], "present": ["H"], "contains": "Hydrogen fuses into helium. Our Sun is here now.", "released": "No. It stays inside.", "hint": "Hint: the card before shows fusion starting. This one shows it running for billions of years.", "front": "The core reaches 10 million K. Hydrogen nuclei are positive, so they repel. Now they move fast enough to crash together and fuse into helium. Fusion pushes out. Gravity pulls in. They balance, so the star stays steady for millions to billions of years.", "next": "The hydrogen in the core runs out. The path depends on the star's mass.", "badge": "Our Sun is here now", "es": "estrella de la secuencia principal", "zh": "主序星", "ar": "نجم في النسق الأساسي", "art": "balance"}, {"id": 4, "name": "Red giant", "path": "sun", "path_label": "Sun-like path: less than about 8 Suns", "made": ["C", "N", "O"], "present": ["H", "He"], "contains": "Helium fuses into carbon and oxygen. Some nitrogen forms too.", "released": "Not yet.", "hint": "Hint: the hydrogen in the core runs low. Comes right after our Sun's stage today.", "front": "The hydrogen in the core runs out. Gravity squeezes the core, so it gets hotter. Now helium fuses into carbon and oxygen. The outer layers swell to about 100 times wider and cool to red. Our Sun will do this in about 5 billion years.", "next": "The outer layers drift away...", "badge": null, "es": "gigante roja", "zh": "紅巨星", "ar": "عملاق أحمر", "art": "redgiant"}, {"id": 5, "name": "Planetary nebula", "path": "sun", "path_label": "Sun-like path: less than about 8 Suns", "made": [], "present": ["H", "He", "C", "N"], "contains": "The outer layers carry hydrogen, helium, and new carbon and nitrogen.", "released": "Yes. The outer layers drift into space.", "hint": "Hint: the red giant's outer layers float away. Comes after the red giant.", "front": "The outer layers drift away into space. They carry hydrogen, helium, and new carbon and nitrogen with them. This glowing shell is called a planetary nebula, but it has nothing to do with planets. Only the hot core is left in the middle.", "next": "Only the core is left...", "badge": null, "es": "nebulosa planetaria", "zh": "行星狀星雲", "ar": "سديم كوكبي", "art": "pn"}, {"id": 6, "name": "White dwarf", "path": "sun", "path_label": "Sun-like path: less than about 8 Suns", "made": [], "present": ["C", "O"], "contains": "A leftover core of carbon and oxygen. No fusion.", "released": "No, it stays locked inside, unless the white dwarf has a close partner star (bonus card).", "hint": "Hint: the leftover core of a Sun-like star. Comes after the outer layers blow away.", "front": "Only the core is left. It is called a white dwarf: white-hot, but only about the size of Earth. There is no fusion. Its carbon and oxygen stay locked inside. It slowly cools for billions of years.", "next": "Most white dwarfs end here. If one has a close partner star, see the bonus card.", "badge": null, "es": "enana blanca", "zh": "白矮星", "ar": "قزم أبيض", "art": "whitedwarf"}, {"id": 7, "name": "Red supergiant", "path": "massive", "path_label": "Massive-star path: more than about 8 Suns", "made": ["C", "O", "Ne", "Mg", "Si", "S"], "present": ["H", "He"], "contains": "The core builds heavier and heavier elements in layers.", "released": "Not yet.", "hint": "Hint: a massive star builds layers like an onion. Comes after the main sequence.", "front": "The hydrogen in the core runs out. A massive star's core gets hot enough to fuse heavier and heavier elements: carbon, oxygen, neon, magnesium, silicon, sulfur. Each new fusion stage starts in the hot center. The star ends up with layers like an onion.", "next": "The core fills with iron...", "badge": null, "es": "supergigante roja", "zh": "紅超巨星", "ar": "عملاق أحمر فائق", "art": "onion"}, {"id": 8, "name": "Iron core collapse", "path": "massive", "path_label": "Massive-star path: more than about 8 Suns", "made": ["Fe"], "present": ["H", "He", "C", "O", "Ne", "Mg", "Si", "S"], "contains": "The core fills with iron. Then fusion stops.", "released": "Not yet.", "hint": "Hint: the core fills with iron. Comes after the onion layers.", "front": "The core fills with iron. Fusing iron uses up energy instead of releasing it. So fusion in the core stops, and nothing pushes out. Gravity wins. The core collapses in less than one second.", "next": "The outer layers crash in and bounce out...", "badge": null, "es": "colapso del núcleo de hierro", "zh": "鐵核心塌縮", "ar": "انهيار اللب الحديدي", "art": "collapse"}, {"id": 9, "name": "Supernova", "path": "massive", "path_label": "Massive-star path: more than about 8 Suns", "made": ["Ca", "Fe"], "present": ["H", "He", "C", "O", "Ne", "Mg", "Si", "S"], "contains": "The blast makes calcium, more iron, and a few heavier elements.", "released": "Yes. Everything blasts into space.", "hint": "Hint: comes right after the iron core collapses.", "front": "The outer layers crash into the collapsed core and bounce out in a giant explosion called a supernova. It blasts oxygen, silicon, sulfur, calcium, and iron into space. For a few weeks it can shine as brightly as a whole galaxy.", "next": "What is left in the center depends on the star's mass...", "badge": null, "es": "supernova", "zh": "超新星", "ar": "مستعر أعظم", "art": "supernova"}, {"id": 10, "name": "Neutron star", "path": "ns", "path_label": "Massive-star path: about 8 to 25 Suns", "made": [], "present": [], "contains": "Atoms are crushed into neutrons. No elements are left.", "released": "No. It stays locked inside.", "hint": "Hint: one possible leftover after a supernova.", "front": "If the original star was about 8 to 25 times the Sun's mass, the core becomes a neutron star. It holds about 1.5 Suns of mass in a ball about 12 miles wide, the size of a city. Atoms are crushed into neutrons.", "next": "If two neutron stars orbit each other, see the bonus card.", "badge": null, "es": "estrella de neutrones", "zh": "中子星", "ar": "نجم نيوتروني", "art": "neutron"}, {"id": 11, "name": "Black hole", "path": "bh", "path_label": "Massive-star path: more than about 25 Suns", "made": [], "present": [], "contains": "Nothing escapes, not even light.", "released": "No. Nothing gets out.", "hint": "Hint: the other possible leftover after a supernova, for the most massive stars.", "front": "If the original star was more than about 25 times the Sun's mass, the core collapses into a black hole. Its gravity is so strong that not even light escapes. We find black holes by the hot, glowing gas swirling around them.", "next": "Only the supernova's debris moves on to the last card.", "badge": null, "es": "agujero negro", "zh": "黑洞", "ar": "ثقب أسود", "art": "blackhole"}, {"id": 12, "name": "Star stuff recycled", "path": "recycle", "path_label": "Back to the start", "made": [], "present": ["H", "He", "C", "N", "O", "Ne", "Mg", "Si", "S", "Ca", "Fe", "Pt", "Au", "U"], "contains": "Every element released by older stars mixes into new clouds.", "released": "Already in space. It becomes the next nebula.", "hint": "Hint: the last card. Its gas and dust become the first card again.", "front": "Gas and dust blown out by dying stars mix into new clouds. Now the clouds hold carbon, oxygen, iron, and gold. They become new nebulas, stars, and planets. Our solar system, and you, formed this way about 4.5 billion years ago.", "next": "Back to the first card: stars are born in a nebula.", "badge": null, "es": "material estelar reciclado", "zh": "恆星物質再利用", "ar": "إعادة تدوير مادة النجوم", "art": "recycle"}, {"id": 13, "name": "White dwarf explodes", "path": "bonus", "path_label": "Bonus: needs a close partner star", "made": ["Si", "S", "Ca", "Fe"], "present": ["C", "O"], "contains": "Makes much of the universe's iron.", "released": "Yes. Everything blasts into space.", "hint": "Hint: branches off the white dwarf, only if it has a close partner star.", "front": "A white dwarf with a close partner star can pull gas off its partner. When the white dwarf gets too heavy, it explodes. This makes much of the universe's iron. Our Sun has no partner star, so it will never do this.", "next": "Its iron moves on to the last card.", "badge": null, "es": "explota una enana blanca", "zh": "白矮星爆炸", "ar": "انفجار قزم أبيض", "art": "partnerwd"}, {"id": 14, "name": "Neutron stars collide", "path": "bonus", "path_label": "Bonus: needs a close partner star", "made": ["Pt", "Au", "U"], "present": [], "contains": "The crash makes gold, platinum, and uranium.", "released": "Yes. The debris flies into space.", "hint": "Hint: branches off the neutron star, only if two neutron stars orbit each other.", "front": "Two neutron stars that orbit each other slowly spiral together and crash. The crash makes gold, platinum, and uranium. Telescopes saw this happen in 2017. Scientists think this makes most gold, but they are still testing other sources.", "next": "Its gold moves on to the last card.", "badge": null, "es": "chocan dos estrellas de neutrones", "zh": "中子星碰撞", "ar": "تصادم نجمين نيوترونيين", "art": "collide"}], "ladder": [["H", 1], ["He", 2], ["C", 6], ["N", 7], ["O", 8], ["Ne", 10], ["Mg", 12], ["Si", 14], ["S", 16], ["Ca", 20], ["Fe", 26], ["Pt", 78], ["Au", 79], ["U", 92]], "rounds": [{"title": "Round 1: All stars", "intro": "Every star starts this way. Put these 3 cards in order.", "order": [3, 1, 2], "slots": [{"id": "r1a", "row": "All stars", "cap": "1st card", "answer": 1}, {"id": "r1b", "row": "All stars", "cap": "2nd card", "answer": 2}, {"id": "r1c", "row": "All stars", "cap": "3rd card", "answer": 3}], "doneMsg": "Round 1 done. Hydrogen and helium are in the element factory."}, {"title": "Round 2: Sun-like path (less than about 8 Suns)", "intro": "This is our Sun's path. What happens after the hydrogen in the core runs out?", "order": [6, 4, 5], "slots": [{"id": "r2a", "row": "Sun-like path", "cap": "1st card", "answer": 4}, {"id": "r2b", "row": "Sun-like path", "cap": "2nd card", "answer": 5}, {"id": "r2c", "row": "Sun-like path", "cap": "3rd card", "answer": 6}], "doneMsg": "Round 2 done. Carbon, nitrogen, and oxygen are in the factory."}, {"title": "Round 3: Massive-star path (more than about 8 Suns)", "intro": "A massive star takes a different path. Put 3 cards in a row. Then choose what is left in the center and the last card.", "order": [10, 8, 12, 7, 11, 9], "slots": [{"id": "r3a", "row": "Massive-star path", "cap": "1st card", "answer": 7}, {"id": "r3b", "row": "Massive-star path", "cap": "2nd card", "answer": 8}, {"id": "r3c", "row": "Massive-star path", "cap": "3rd card", "answer": 9}, {"id": "r3d", "row": "What is left in the center?", "cap": "If about 8 to 25 Suns", "answer": 10}, {"id": "r3e", "row": "What is left in the center?", "cap": "If more than about 25 Suns", "answer": 11}, {"id": "r3f", "row": "Back to the start", "cap": "Last card", "answer": 12}], "doneMsg": "Round 3 done. Elements up to iron are in the factory, and the cycle is closed."}, {"title": "Bonus: needs a close partner star", "intro": "Some stars have a close partner. These two cards branch off the path.", "order": [14, 13], "slots": [{"id": "r4a", "row": "Side branches", "cap": "Branches off the white dwarf", "answer": 13}, {"id": "r4b", "row": "Side branches", "cap": "Branches off the neutron star", "answer": 14}], "doneMsg": "Bonus done. Gold, platinum, and uranium are in the factory."}], "glossary": [["fusion", "fusión nuclear", "核融合", "اندماج نووي"], ["gravity", "gravedad", "重力", "الجاذبية"], ["nucleus (nuclei)", "núcleo atómico", "原子核", "نواة الذرة"], ["core of a star", "núcleo de la estrella", "恆星核心", "لب النجم"], ["element", "elemento", "元素", "عنصر"], ["mass", "masa", "質量", "كتلة"], ["released into space", "liberado al espacio", "釋放到太空", "ينطلق إلى الفضاء"]], "q": {"carbon": "Where did Earth's carbon come from? Carbon is in every living thing on Earth. Explain where Earth's carbon came from. Use at least one card as evidence.", "gold": "Where does gold come from? The old supernova card says supernovas make gold. The video and the bonus card say neutron stars colliding make gold. Which claim has better evidence?"}};
+const DATA = {"cards": [{"id": 1, "name": "Nebula", "path": "all", "path_label": "All stars", "made": [], "present": ["H", "He"], "contains": "Mostly hydrogen and helium from the Big Bang, plus a little star stuff from older stars.", "released": "Already in space.", "hint": "Hint: this is the very first card. Stars are born here.", "front": "Stars are born in a nebula, a giant cloud of gas and dust in space. It is mostly hydrogen and helium from the Big Bang. It also holds small amounts of other elements left by older stars. In the Pillars of Creation, new stars are forming right now.", "next": "Gravity pulls the gas and dust together...", "badge": null, "es": "nebulosa", "zh": "星雲", "ar": "سديم", "art": "nebula"}, {"id": 2, "name": "Protostar", "path": "all", "path_label": "All stars", "made": [], "present": ["H", "He"], "contains": "Nothing new is made yet. There is no fusion.", "released": "No.", "hint": "Hint: comes after the cloud of gas and dust. Gravity pulls it into a ball.", "front": "Gravity pulls the gas and dust together. The ball of gas gets smaller and denser. The center gets hotter and hotter. It glows, but it is not a star yet. There is no fusion.", "next": "The core reaches about 10 million K...", "badge": null, "es": "protoestrella", "zh": "原恆星", "ar": "نجم أولي", "art": "protostar"}, {"id": 3, "name": "Main sequence star", "path": "all", "path_label": "All stars", "made": ["He"], "present": ["H"], "contains": "Hydrogen fuses into helium. Our Sun is here now.", "released": "No. It stays inside.", "hint": "Hint: the card before shows fusion starting. This one shows it running for billions of years.", "front": "The core reaches about 10 million K. Hydrogen nuclei are positive, so they repel. Now they move fast enough to crash together and fuse into helium. Fusion pushes out. Gravity pulls in. They balance, so the star stays steady for millions to billions of years.", "next": "The hydrogen in the core runs out. The path depends on the star's mass.", "badge": "Our Sun is here now", "es": "estrella de la secuencia principal", "zh": "主序星", "ar": "نجم في النسق الأساسي", "art": "balance"}, {"id": 4, "name": "Red giant", "path": "sun", "path_label": "Stars like our Sun: up to about 8x the Sun's mass", "made": ["C", "N", "O"], "present": ["H", "He"], "contains": "Helium fuses into carbon and oxygen. Some nitrogen forms too.", "released": "Not yet.", "hint": "Hint: the hydrogen in the core runs low. Comes right after our Sun's stage today.", "front": "The hydrogen in the core runs out. Gravity squeezes the core, so it gets hotter. Now helium fuses into carbon and oxygen. The outer layers swell to about 100 times wider and cool to red. Our Sun will do this in about 5 billion years.", "next": "The outer layers drift away...", "badge": null, "es": "gigante roja", "zh": "紅巨星", "ar": "عملاق أحمر", "art": "redgiant"}, {"id": 5, "name": "Planetary nebula", "path": "sun", "path_label": "Stars like our Sun: up to about 8x the Sun's mass", "made": [], "present": ["H", "He", "C", "N"], "contains": "The outer layers carry hydrogen, helium, and new carbon and nitrogen.", "released": "Yes. The outer layers drift into space.", "hint": "Hint: the red giant's outer layers float away. Comes after the red giant.", "front": "The outer layers drift away into space. They carry hydrogen, helium, and new carbon and nitrogen with them. This glowing shell is called a planetary nebula, but it has nothing to do with planets. Only the hot core is left in the middle.", "next": "Only the core is left...", "badge": null, "es": "nebulosa planetaria", "zh": "行星狀星雲", "ar": "سديم كوكبي", "art": "pn"}, {"id": 6, "name": "White dwarf", "path": "sun", "path_label": "Stars like our Sun: up to about 8x the Sun's mass", "made": [], "present": ["C", "O"], "contains": "A leftover core of carbon and oxygen. No fusion.", "released": "No, it stays locked inside, unless the white dwarf has a close partner star (bonus card).", "hint": "Hint: the leftover core of a star like our Sun. Comes after the outer layers blow away.", "front": "Only the core is left. It is called a white dwarf: white-hot, but only about the size of Earth. There is no fusion. Its carbon and oxygen stay locked inside. It slowly cools for billions of years.", "next": "Most white dwarfs end here. If one has a close partner star, see the bonus card.", "badge": null, "es": "enana blanca", "zh": "白矮星", "ar": "قزم أبيض", "art": "whitedwarf"}, {"id": 7, "name": "Red supergiant", "path": "massive", "path_label": "Massive stars: more than about 8x the Sun's mass", "made": ["C", "O", "Ne", "Mg", "Si", "S"], "present": ["H", "He"], "contains": "The core builds heavier and heavier elements in layers.", "released": "Not yet.", "hint": "Hint: a massive star builds layers like an onion. Comes after the main sequence.", "front": "The hydrogen in the core runs out. A massive star's core gets hot enough to fuse heavier and heavier elements: carbon, oxygen, neon, magnesium, silicon, sulfur. Each new fusion stage starts in the hot center. The star ends up with layers like an onion.", "next": "The core fills with iron...", "badge": null, "es": "supergigante roja", "zh": "紅超巨星", "ar": "عملاق أحمر فائق", "art": "onion"}, {"id": 8, "name": "Iron core collapse", "path": "massive", "path_label": "Massive stars: more than about 8x the Sun's mass", "made": ["Ca", "Fe"], "present": ["H", "He", "C", "O", "Ne", "Mg", "Si", "S"], "contains": "Silicon fuses into calcium and then iron. Then fusion stops.", "released": "Not yet.", "hint": "Hint: the core fills with iron. Comes after the onion layers.", "front": "Silicon fuses into heavier elements like calcium, and finally iron. The core fills with iron. Fusing iron uses up energy instead of releasing it. So fusion in the core stops, and nothing pushes out. Gravity wins. The core collapses in less than one second.", "next": "The outer layers crash in and bounce out...", "badge": null, "es": "colapso del núcleo de hierro", "zh": "鐵核心塌縮", "ar": "انهيار اللب الحديدي", "art": "collapse"}, {"id": 9, "name": "Supernova", "path": "massive", "path_label": "Massive stars: more than about 8x the Sun's mass", "made": ["Fe"], "present": ["H", "He", "C", "O", "Ne", "Mg", "Si", "S", "Ca"], "contains": "Makes more iron and a few elements heavier than iron.", "released": "Yes, all of it.", "hint": "Hint: comes right after the iron core collapses.", "front": "The outer layers crash into the collapsed core and bounce out in a giant explosion called a supernova. It blasts oxygen, silicon, sulfur, calcium, and iron into space. For a few weeks it can shine as brightly as billions of Suns.", "next": "What is left in the center depends on the star's mass...", "badge": null, "es": "supernova", "zh": "超新星", "ar": "مستعر أعظم", "art": "supernova"}, {"id": 10, "name": "Neutron star", "path": "ns", "path_label": "Massive stars: about 8x to 25x the Sun's mass", "made": [], "present": [], "contains": "Atoms are crushed into neutrons. No elements are left.", "released": "No, locked inside.", "hint": "Hint: one possible leftover after a supernova.", "front": "If the original star was about 8 to 25 times the Sun's mass, the core becomes a neutron star. It packs about 1.5 times the Sun's mass into a ball about 12 miles wide, the size of a city. Atoms are crushed into neutrons.", "next": "If two neutron stars orbit each other, see the bonus card.", "badge": null, "es": "estrella de neutrones", "zh": "中子星", "ar": "نجم نيوتروني", "art": "neutron"}, {"id": 11, "name": "Black hole", "path": "bh", "path_label": "Massive stars: more than about 25x the Sun's mass", "made": [], "present": [], "contains": "Nothing escapes, not even light.", "released": "No. Nothing escapes.", "hint": "Hint: the other possible leftover after a supernova, for the most massive stars.", "front": "If the original star was more than about 25 times the Sun's mass, the core collapses into a black hole. Its gravity is so strong that not even light escapes. We find black holes by the hot, glowing gas swirling around them.", "next": "Only the supernova's debris moves on to the last card.", "badge": null, "es": "agujero negro", "zh": "黑洞", "ar": "ثقب أسود", "art": "blackhole"}, {"id": 12, "name": "Star stuff recycled", "path": "recycle", "path_label": "Back to the start", "made": [], "present": ["H", "He", "C", "N", "O", "Ne", "Mg", "Si", "S", "Ca", "Fe", "Pt", "Au", "U"], "contains": "Every element released by older stars mixes into new clouds.", "released": "Already in space. It becomes the next nebula.", "hint": "Hint: the last card. Its gas and dust become the first card again.", "front": "Gas and dust blown out by dying stars mix into new clouds. Now the clouds hold carbon, oxygen, iron, and gold. They become new nebulas, stars, and planets. Our solar system, and you, formed this way about 4.5 billion years ago.", "next": "Back to the first card: stars are born in a nebula.", "badge": null, "es": "material estelar reciclado", "zh": "恆星物質再利用", "ar": "إعادة تدوير مادة النجوم", "art": "recycle"}, {"id": 13, "name": "White dwarf explodes", "path": "bonus", "path_label": "Bonus: needs a close partner star", "made": ["Si", "S", "Ca", "Fe"], "present": ["C", "O"], "contains": "Makes much of the universe's iron.", "released": "Yes. Everything blasts into space.", "hint": "Hint: branches off the white dwarf, only if it has a close partner star.", "front": "A white dwarf with a close partner star can pull gas off its partner. When the white dwarf gets too heavy, it explodes. This makes much of the universe's iron. Our Sun has no partner star, so it will never do this.", "next": "Its iron moves on to the last card.", "badge": null, "es": "explota una enana blanca", "zh": "白矮星爆炸", "ar": "انفجار قزم أبيض", "art": "partnerwd"}, {"id": 14, "name": "Neutron stars collide", "path": "bonus", "path_label": "Bonus: needs a close partner star", "made": ["Pt", "Au", "U"], "present": [], "contains": "The crash makes gold, platinum, and uranium.", "released": "Yes. The debris flies into space.", "hint": "Hint: branches off the neutron star, only if two neutron stars orbit each other.", "front": "Two neutron stars that orbit each other slowly spiral together and crash. The crash makes gold, platinum, and uranium. Telescopes saw this happen in 2017. Scientists think this makes most gold, but they are still testing other sources.", "next": "Its gold moves on to the last card.", "badge": null, "es": "chocan dos estrellas de neutrones", "zh": "中子星碰撞", "ar": "تصادم نجمين نيوترونيين", "art": "collide"}], "ladder": [["H", 1], ["He", 2], ["C", 6], ["N", 7], ["O", 8], ["Ne", 10], ["Mg", 12], ["Si", 14], ["S", 16], ["Ca", 20], ["Fe", 26], ["Pt", 78], ["Au", 79], ["U", 92]], "rounds": [{"title": "Round 1: All stars", "intro": "Every star starts this way. Put these 3 cards in order.", "order": [3, 1, 2], "slots": [{"id": "r1a", "row": "All stars", "cap": "1st card", "answer": 1}, {"id": "r1b", "row": "All stars", "cap": "2nd card", "answer": 2}, {"id": "r1c", "row": "All stars", "cap": "3rd card", "answer": 3}], "doneMsg": "Round 1 done. Hydrogen and helium are in the element factory."}, {"title": "Round 2: Life path of stars like our Sun (up to about 8x the Sun's mass)", "intro": "This is our Sun's path. What happens after the hydrogen in the core runs out?", "order": [6, 4, 5], "slots": [{"id": "r2a", "row": "Stars like our Sun", "cap": "1st card", "answer": 4}, {"id": "r2b", "row": "Stars like our Sun", "cap": "2nd card", "answer": 5}, {"id": "r2c", "row": "Stars like our Sun", "cap": "3rd card", "answer": 6}], "doneMsg": "Round 2 done. Carbon, nitrogen, and oxygen are in the factory."}, {"title": "Round 3: Life path of massive stars (more than about 8x the Sun's mass)", "intro": "A massive star takes a different path. Put 3 cards in a row. Then choose what is left in the center and the last card.", "order": [10, 8, 12, 7, 11, 9], "slots": [{"id": "r3a", "row": "Massive stars", "cap": "1st card", "answer": 7}, {"id": "r3b", "row": "Massive stars", "cap": "2nd card", "answer": 8}, {"id": "r3c", "row": "Massive stars", "cap": "3rd card", "answer": 9}, {"id": "r3d", "row": "What is left in the center?", "cap": "If about 8x to 25x the Sun's mass", "answer": 10}, {"id": "r3e", "row": "What is left in the center?", "cap": "If more than about 25x the Sun's mass", "answer": 11}, {"id": "r3f", "row": "Back to the start", "cap": "Last card", "answer": 12}], "doneMsg": "Round 3 done. Elements up to iron are in the factory, and the cycle is closed."}, {"title": "Bonus: needs a close partner star", "intro": "Some stars have a close partner. These two cards branch off the path.", "order": [14, 13], "slots": [{"id": "r4a", "row": "Side branches", "cap": "Branches off the white dwarf", "answer": 13}, {"id": "r4b", "row": "Side branches", "cap": "Branches off the neutron star", "answer": 14}], "doneMsg": "Bonus done. Gold, platinum, and uranium are in the factory."}], "glossary": [["fusion", "fusión nuclear", "核融合", "اندماج نووي"], ["gravity", "gravedad", "重力", "الجاذبية"], ["nucleus (nuclei)", "núcleo atómico", "原子核", "نواة الذرة"], ["core of a star", "núcleo de la estrella", "恆星核心", "لب النجم"], ["element", "elemento", "元素", "عنصر"], ["mass", "masa", "質量", "كتلة"], ["released into space", "liberado al espacio", "釋放到太空", "ينطلق إلى الفضاء"]], "q": {"iron": {"ask": "Why does a massive star die when its core fills with iron? Use the Iron core collapse card.", "frame": "Fusing iron ... energy instead of ... it. So nothing pushes ... against gravity, and the core ...", "min": 8, "err": "Write at least one full sentence about what fusing iron does to the star's energy."}, "carbon": {"ask": "Where did the carbon that supports life on Earth come from? About 18% of your body's mass is carbon. Trace that carbon from the star that made it to you. Use at least one card as evidence.", "frame": "The carbon was made inside ... by fusing ... It got out into space when ... The ... card shows this. Then it ... and became part of Earth and living things.", "min": 10, "err": "Trace the carbon in at least two sentences, and name a card as evidence."}, "gold": {"ask": "Where does gold come from? Use the cards and the video as evidence. Not every source agrees, so say what would change your mind.", "frame": "I think gold mostly comes from ... because the evidence ... I would change my mind if ...", "min": 8, "err": "Write at least one full sentence about the evidence."}}, "qorder": ["iron", "carbon", "gold"], "stars": [{"id": "sol", "name": "Sol (our Sun)", "short": "Sol", "mass": "1", "see": "Steady star, fusing hydrogen for 4.6 billion years", "answer": ["Main sequence star"]}, {"id": "vega", "name": "Vega", "short": "Vega", "mass": "about 2", "see": "Hot white star, steadily fusing hydrogen", "answer": ["Main sequence star"]}, {"id": "siriusA", "name": "Sirius A", "short": "Sirius A", "mass": "about 2", "see": "Hot white star, steadily fusing hydrogen", "answer": ["Main sequence star"]}, {"id": "siriusB", "name": "Sirius B, Sirius A's partner", "short": "Sirius B", "mass": "about 1", "see": "Tiny and white-hot, about the size of Earth. No fusion.", "answer": ["White dwarf"]}, {"id": "procyonA", "name": "Procyon A", "short": "Procyon A", "mass": "about 1.5", "see": "The hydrogen in its core is almost used up. It is starting to swell.", "answer": ["Main sequence star", "Red giant"]}, {"id": "procyonB", "name": "Procyon B, Procyon A's partner", "short": "Procyon B", "mass": "about 0.6", "see": "Tiny and white-hot, about the size of Earth. No fusion.", "answer": ["White dwarf"]}, {"id": "aldebaran", "name": "Aldebaran", "short": "Aldebaran", "mass": "about 1.2", "see": "Orange-red star, swollen to about 45 times the Sun's width", "answer": ["Red giant"]}, {"id": "betelgeuse", "name": "Betelgeuse", "short": "Betelgeuse", "mass": "about 15 to 20", "see": "Red star, swollen to hundreds of times the Sun's width. Fusing helium in its core.", "answer": ["Red supergiant"]}], "stageOptions": ["Nebula", "Protostar", "Main sequence star", "Red giant", "Planetary nebula", "White dwarf", "Red supergiant", "Iron core collapse", "Supernova", "Neutron star", "Black hole"], "starsTask": {"label": "Exit ticket: stars you already know", "text": "In Star Discovery, you found elements in these stars' light. A star's light mostly shows what the star was born from, not its stage. Use each star's mass and what astronomers see to name the card it is on now."}};
 </script>
 <script>
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const CARD = Object.fromEntries(DATA.cards.map((c) => [c.id, c]));
 const ROUNDS = DATA.rounds;
-const KEY = "starsort-v1";
+const KEY = "starsort-v3";
 
 let state = load() || fresh();
 function fresh() {
   return { stage: "start", round: 0, place: {}, locked: {}, checks: [0, 0, 0, 0], hints: 0, hintTier: [0, 0, 0, 0],
-    flips: 0, name: "", period: "", carbon: "", gold: "", started: Date.now(), lit: [] };
+    flips: 0, name: "", period: "", iron: "", carbon: "", gold: "", started: Date.now(), lit: [] };
 }
 function load() { try { return JSON.parse(localStorage.getItem(KEY)); } catch (e) { return null; } }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
@@ -182,24 +202,35 @@ function trName(c) {
   return `<span class="tr" lang="${l === "zh" ? "zh-Hant" : l}"${dir}>${esc(c[l])}</span>`;
 }
 
-function cardHTML(c, roundIdx) {
+function cardHTML(c, roundIdx, review) {
   const back = shownBack.has(c.id);
   const sel = selected === c.id;
   const face = back
     ? `<div class="back"><p><b>Element factory</b> (black = made here)</p>${ladderHTML(c)}<p>${esc(c.contains)}</p><p><b>Released into space?</b> ${esc(c.released)}</p></div>`
     : `<div class="front">${art(c.art)}<p>${esc(c.front)}</p><p class="next">Next: ${esc(c.next)}</p></div>`;
   const hint = showHints ? `<p class="hintline">${esc(c.hint)}</p>` : "";
-  return `<article class="card" data-id="${c.id}" tabindex="0" draggable="true" data-selected="${sel}" aria-label="${esc(c.name)} card${sel ? ", selected" : ""}. Press Enter to select, then choose a box.">
-    <div><h3>${esc(c.name)}</h3>${trName(c)}<span class="tag ${c.path}">${esc(c.path_label)}</span>${c.badge ? `<span class="badge">${esc(c.badge)}</span>` : ""}</div>
+  return `<article class="card" data-id="${c.id}" tabindex="0" data-selected="${sel}" aria-label="${esc(c.name)} card${sel ? ", selected" : ""}. Press Enter to select, then choose a box.">
+    <div class="handle" title="Drag by the title"><svg class="grip" width="14" height="22" viewBox="0 0 14 22" aria-hidden="true"><g fill="currentColor"><circle cx="4" cy="4" r="2"/><circle cx="10" cy="4" r="2"/><circle cx="4" cy="11" r="2"/><circle cx="10" cy="11" r="2"/><circle cx="4" cy="18" r="2"/><circle cx="10" cy="18" r="2"/></g></svg><div><h3>${esc(c.name)}</h3>${trName(c)}<span class="tag ${c.path}">${esc(c.path_label)}</span>${c.badge ? `<span class="badge">${esc(c.badge)}</span>` : ""}</div></div>
     ${face}${hint}
     <div class="card-actions"><button type="button" data-flip="${c.id}">${back ? "Show front" : "Flip card"}</button>
-    <button type="button" data-select="${c.id}">${sel ? "Selected" : "Select"}</button></div></article>`;
+    ${review ? "" : `<button type="button" data-select="${c.id}">${sel ? "Selected" : "Select"}</button>`}</div></article>`;
 }
 
+function roundDone(r) { return ROUNDS[r].slots.every((s) => state.locked[s.id]); }
+function allDone() { return ROUNDS.every((_, r) => roundDone(r)); }
 function renderSteps() {
   const names = ["Start", "Round 1", "Round 2", "Round 3", "Bonus", "Explain", "Finish"];
   const idx = state.stage === "start" ? 0 : state.stage === "sort" ? state.round + 1 : state.stage === "explain" ? 5 : 6;
-  $("#steps").innerHTML = names.map((n, i) => `<li class="${i === idx ? "now" : i < idx ? "done" : ""}"${i === idx ? ' aria-current="step"' : ""}>${n}</li>`).join("");
+  const can = (i) => i === 0 || (!!state.name && (i <= 4 ? (i === 1 || roundDone(i - 2)) : i === 5 ? allDone() : !!state.finished));
+  $("#steps").innerHTML = names.map((n, i) => `<li class="${i === idx ? "now" : can(i) ? "done" : ""}"><button type="button" data-step="${i}"${can(i) ? "" : " disabled"}${i === idx ? ' aria-current="step"' : ""}>${n}</button></li>`).join("");
+  $("#steps").querySelectorAll("[data-step]").forEach((b) => b.onclick = () => {
+    const i = Number(b.dataset.step);
+    if (i === 0) state.stage = "start";
+    else if (i <= 4) { state.stage = "sort"; state.round = i - 1; }
+    else if (i === 5) state.stage = "explain";
+    else state.stage = "finish";
+    shownBack.clear(); showHints = false; selected = null; save(); render(); window.scrollTo(0, 0);
+  });
 }
 
 function renderFactory() {
@@ -236,7 +267,7 @@ function renderStart(app) {
     <label class="field" for="pd">Class period</label><input type="text" id="pd" value="${esc(state.period)}" style="max-width:160px">
     <p class="err" id="startErr" role="alert"></p>
     <p><b>Step 1.</b> Watch the video first (2 min 27 s): <a href="${CONFIG.videoUrl}" target="_blank" rel="noopener">The Origin of Heavy Elements</a>. If it doesn't open, try the <a href="${CONFIG.backupVideoUrl}" target="_blank" rel="noopener">backup link</a>.</p>
-    <p><b>Step 2.</b> Sort the cards. Select a card, then select a box. On a computer with a mouse you can also drag.</p>
+    <p><b>Step 2.</b> Sort the cards. Drag a card by its title into a box, or tap <b>Select</b> on a card and then tap a box. Changed your mind? Tap the &times; on a placed card to take it back out.</p>
     <div class="bar"><button class="primary" id="go">Start sorting</button></div>
     <div class="glossary" id="gloss"></div></section>`;
   renderGlossary();
@@ -271,16 +302,17 @@ function renderSort(app) {
   const board = Object.entries(rows).map(([row, slots]) => `<div class="row"><div class="row-label">${esc(row)}</div><div class="slots">${slots.map((s) => {
     const cid = state.place[s.id]; const c = cid ? CARD[cid] : null;
     const cls = state.locked[s.id] ? "ok" : selected && !cid ? "ready" : "";
-    return `<div class="slot ${cls}" data-slot="${s.id}" tabindex="0" role="button" aria-label="${esc(s.cap)}${c ? ": " + esc(c.name) : ", empty"}"><div class="cap">${esc(s.cap)}</div>${c ? `<div class="mini"><b>${esc(c.name)}</b>${trName(c)}</div>` : ""}</div>`;
+    return `<div class="slot ${cls}" data-slot="${s.id}" tabindex="0" role="button" aria-label="${esc(s.cap)}${c ? ": " + esc(c.name) : ", empty"}"><div class="cap">${esc(s.cap)}</div>${c ? `<div class="mini" data-mini="${c.id}" data-from="${s.id}"><b>${esc(c.name)}</b>${trName(c)}${state.locked[s.id] ? "" : `<button type="button" class="remove" data-remove="${s.id}" aria-label="Take ${esc(c.name)} out of this box" title="Take it back out">&times;</button>`}</div>` : ""}</div>`;
   }).join("")}</div></div>`).join("");
-  const tray = trayCards(state.round);
+  const tray = done ? R.slots.map((s) => CARD[s.answer]) : trayCards(state.round);
   app.innerHTML = `<section class="panel"><h2>${esc(R.title)}</h2><p class="lead">${esc(R.intro)}</p>
     <div class="layout"><div class="board">${board}
       <div class="bar"><button class="primary" id="check"${done ? " hidden" : ""}>Check my order</button>
       <button id="hint"${done ? " hidden" : ""}>Get a hint</button>
-      <button class="primary" id="next"${done ? "" : " hidden"}>${state.round < ROUNDS.length - 1 ? "Next round" : "Go to questions"}</button></div>
+      <button class="primary" id="next"${done ? "" : " hidden"}>${state.round < ROUNDS.length - 1 ? "Next round" : "Go to questions"}</button>
+      ${allDone() && state.round < ROUNDS.length - 1 ? '<button id="toq">Back to the questions</button>' : ""}</div>
       <p class="msg" id="msg" role="status"></p><ul class="feedback" id="fb"></ul><div class="glossary" id="gloss"></div></div>
-    <div><div class="tray" id="tray">${tray.length ? tray.map((c) => cardHTML(c, state.round)).join("") : '<p class="tray-empty">All cards are placed. Check your order.</p>'}</div></div></div></section>`;
+    <div>${done ? '<p class="review-note">The cards from this round, in order. Flip them to see the element factory.</p>' : ""}<div class="tray" id="tray">${tray.length ? tray.map((c) => cardHTML(c, state.round, done)).join("") : '<p class="tray-empty">All cards are placed. Check your order.</p>'}</div></div></div></section>`;
   renderGlossary();
   if (done) { $("#msg").className = "msg ok"; $("#msg").textContent = R.doneMsg; }
   wireSort();
@@ -311,28 +343,85 @@ function wireSort() {
   });
   app.querySelectorAll(".card").forEach((el) => {
     el.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === el) { e.preventDefault(); selected = Number(el.dataset.id); render(); const s = $(".slot.ready"); if (s) s.focus(); } });
-    el.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", el.dataset.id); });
+    el.addEventListener("pointerdown", (e) => { if (e.pointerType === "mouse" || e.target.closest(".handle")) beginDrag(e, Number(el.dataset.id), null, el); });
   });
   app.querySelectorAll(".slot").forEach((el) => {
     const sid = el.dataset.slot;
-    const act = () => {
-      if (state.locked[sid]) return;
-      if (selected) return placeInto(sid, selected);
-      if (state.place[sid]) { delete state.place[sid]; save(); render(); }
-    };
-    el.onclick = act;
-    el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); } });
-    el.addEventListener("dragover", (e) => { if (!state.locked[sid]) { e.preventDefault(); el.classList.add("over"); } });
-    el.addEventListener("dragleave", () => el.classList.remove("over"));
-    el.addEventListener("drop", (e) => { e.preventDefault(); const id = Number(e.dataTransfer.getData("text/plain")); if (id) placeInto(sid, id); });
+    const act = () => { if (!state.locked[sid] && selected) placeInto(sid, selected); };
+    el.onclick = (e) => { if (!e.target.closest(".remove")) act(); };
+    el.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === el) { e.preventDefault(); act(); } });
+  });
+  app.querySelectorAll("[data-remove]").forEach((b) => b.onclick = (e) => {
+    e.stopPropagation(); const sid = b.dataset.remove;
+    if (state.locked[sid]) return;
+    delete state.place[sid]; save(); render(); setMsg("Card taken back out.", "");
+  });
+  app.querySelectorAll(".mini[data-mini]").forEach((m) => {
+    if (state.locked[m.dataset.from]) return;
+    m.addEventListener("pointerdown", (e) => beginDrag(e, Number(m.dataset.mini), m.dataset.from, m));
   });
   const chk = $("#check"); if (chk) chk.onclick = checkRound;
+  const tq = $("#toq"); if (tq) tq.onclick = () => { shownBack.clear(); showHints = false; state.stage = "explain"; save(); render(); window.scrollTo(0, 0); };
   const h = $("#hint"); if (h) h.onclick = giveHint;
   const nx = $("#next"); if (nx) nx.onclick = () => {
     shownBack.clear(); showHints = false; selected = null;
     if (state.round < ROUNDS.length - 1) state.round++; else state.stage = "explain";
     save(); render(); window.scrollTo(0, 0);
   };
+}
+
+let drag = null;
+function beginDrag(e, cid, fromSlot, src) {
+  if (e.button !== 0 || e.target.closest("button")) return;
+  drag = { cid, fromSlot, src, x0: e.clientX, y0: e.clientY, on: false, over: null, ghost: null };
+  document.addEventListener("pointermove", moveDrag, { passive: false });
+  document.addEventListener("pointerup", endDrag);
+  document.addEventListener("pointercancel", cleanupDrag);
+}
+function moveDrag(e) {
+  if (!drag) return;
+  if (!drag.on) {
+    if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 6) return;
+    drag.on = true;
+    const g = document.createElement("div");
+    g.className = "ghost";
+    g.textContent = CARD[drag.cid].name;
+    document.body.appendChild(g);
+    drag.ghost = g;
+    drag.src.classList.add("dragsrc");
+    document.body.classList.add("dragging");
+  }
+  e.preventDefault();
+  drag.ghost.style.transform = `translate(${e.clientX + 14}px, ${e.clientY + 12}px)`;
+  const hit = document.elementFromPoint(e.clientX, e.clientY);
+  const slot = hit && hit.closest(".slot");
+  const sid = slot && !state.locked[slot.dataset.slot] ? slot.dataset.slot : null;
+  if (sid !== drag.over) {
+    document.querySelectorAll(".slot.over").forEach((s) => s.classList.remove("over"));
+    if (sid) slot.classList.add("over");
+    drag.over = sid;
+  }
+  const edge = 45;
+  if (e.clientY < edge) window.scrollBy(0, -14); else if (e.clientY > innerHeight - edge) window.scrollBy(0, 14);
+}
+function endDrag(e) {
+  const d = drag;
+  cleanupDrag();
+  if (!d || !d.on) return;
+  if (d.over) { placeInto(d.over, d.cid); return; }
+  if (d.fromSlot) {
+    const hit = document.elementFromPoint(e.clientX, e.clientY);
+    if (hit && hit.closest("#tray")) { delete state.place[d.fromSlot]; save(); render(); }
+  }
+}
+function cleanupDrag() {
+  document.removeEventListener("pointermove", moveDrag);
+  document.removeEventListener("pointerup", endDrag);
+  document.removeEventListener("pointercancel", cleanupDrag);
+  if (drag) { if (drag.ghost) drag.ghost.remove(); if (drag.src) drag.src.classList.remove("dragsrc"); }
+  document.body.classList.remove("dragging");
+  document.querySelectorAll(".slot.over").forEach((s) => s.classList.remove("over"));
+  drag = null;
 }
 
 function checkRound() {
@@ -348,7 +437,7 @@ function checkRound() {
   save(); render();
   if (!wrong.length) return;
   setMsg(`${R.slots.length - wrong.length} of ${R.slots.length} are right. The others went back to the cards.`, "bad");
-  $("#fb").innerHTML = wrong.map((c) => `<li><b>${esc(c.name)}:</b> ${esc(c.hint.replace(/^Hint: /, ""))}</li>`).join("");
+  $("#fb").innerHTML = wrong.map((c) => `<li><b>${esc(c.name)}:</b> ${esc(c.hint)}</li>`).join("");
 }
 
 function giveHint() {
@@ -368,40 +457,57 @@ function giveHint() {
 }
 
 function renderExplain(app) {
+  const Q = DATA.q;
+  const block = (k) => `<label class="field" for="q_${k}">${esc(Q[k].ask)}</label>
+    <p class="frame">${esc(Q[k].frame)}</p>
+    <textarea id="q_${k}">${esc(state[k] || "")}</textarea><p class="err" id="e_${k}" role="alert"></p>`;
   app.innerHTML = `<section class="panel"><h2>Explain it</h2>
     <p class="lead">Answer in full sentences. You can use the sentence starters.</p>
-    <label class="field" for="carbon">${esc(DATA.q.carbon)}</label>
-    <p class="frame">Claim: Earth's carbon was made inside ... Evidence: The ... card shows ... Reasoning: The carbon reached space when ... Later, the carbon ...</p>
-    <textarea id="carbon">${esc(state.carbon)}</textarea><p class="err" id="e1" role="alert"></p>
-    <label class="field" for="gold">${esc(DATA.q.gold)}</label>
-    <p class="frame">I think gold mostly comes from ... because the evidence ... I would change my mind if ...</p>
-    <textarea id="gold">${esc(state.gold)}</textarea><p class="err" id="e2" role="alert"></p>
+    ${DATA.qorder.map(block).join("")}
+    <h2 style="margin-top:18px">${esc(DATA.starsTask.label)}</h2><p class="lead">${esc(DATA.starsTask.text)}</p>
+    <div class="startable"><table><thead><tr><th>Star</th><th>Mass (x the Sun's)</th><th>What astronomers see now</th><th>Card it is on now</th></tr></thead><tbody>
+    ${DATA.stars.map((s) => `<tr><td><b>${esc(s.name)}</b></td><td>${esc(s.mass)}</td><td>${esc(s.see)}</td><td><select data-star="${s.id}" aria-label="Card for ${esc(s.name)}"><option value="">Choose a card</option>${DATA.stageOptions.map((o) => `<option${(state.stars || {})[s.id] === o ? " selected" : ""}>${esc(o)}</option>`).join("")}</select></td></tr>`).join("")}
+    </tbody></table></div>
+    <label class="field" for="snStar">Which of these stars will one day explode as a supernova?</label>
+    <select id="snStar"><option value="">Choose a star</option>${DATA.stars.map((s) => `<option${state.snStar === s.short ? " selected" : ""}>${esc(s.short)}</option>`).join("")}</select>
+    <label class="field" for="snLeft">What will it most likely leave behind?</label>
+    <select id="snLeft"><option value="">Choose one</option>${["White dwarf", "Neutron star", "Black hole", "Nothing"].map((o) => `<option${state.snLeft === o ? " selected" : ""}>${o}</option>`).join("")}</select>
+    <p class="err" id="e_stars" role="alert"></p>
     <div class="bar"><button id="back">Back to the cards</button><button class="primary" id="fin">Finish</button></div>
     <div class="glossary" id="gloss"></div></section>`;
   renderGlossary();
-  const sync = () => { state.carbon = $("#carbon").value; state.gold = $("#gold").value; save(); };
-  $("#carbon").addEventListener("input", () => { $("#e1").textContent = ""; sync(); });
-  $("#gold").addEventListener("input", () => { $("#e2").textContent = ""; sync(); });
-  $("#back").onclick = () => { state.stage = "sort"; save(); render(); };
+  const sync = () => {
+    DATA.qorder.forEach((k) => { state[k] = $("#q_" + k).value; });
+    state.stars = state.stars || {};
+    app.querySelectorAll("[data-star]").forEach((s) => { state.stars[s.dataset.star] = s.value; });
+    state.snStar = $("#snStar").value; state.snLeft = $("#snLeft").value; save();
+  };
+  app.querySelectorAll("select").forEach((s) => s.addEventListener("change", () => { $("#e_stars").textContent = ""; sync(); }));
+  DATA.qorder.forEach((k) => $("#q_" + k).addEventListener("input", () => { $("#e_" + k).textContent = ""; sync(); }));
+  $("#back").onclick = () => { state.stage = "sort"; state.round = 0; save(); render(); window.scrollTo(0, 0); };
   $("#fin").onclick = () => {
     sync();
-    const w = (t) => t.trim().split(/\s+/).filter(Boolean).length;
-    let ok = true;
-    if (w(state.carbon) < 8) { $("#e1").textContent = "Write at least one full sentence that names a card as evidence."; ok = false; }
-    if (w(state.gold) < 8) { $("#e2").textContent = "Write at least one full sentence about the evidence."; ok = false; }
-    if (!ok) return;
+    const w = (t) => (t || "").trim().split(/\s+/).filter(Boolean).length;
+    let first = null;
+    DATA.qorder.forEach((k) => {
+      if (w(state[k]) < Q[k].min) { $("#e_" + k).textContent = Q[k].err; if (!first) first = k; }
+    });
+    const missing = DATA.stars.filter((s) => !state.stars[s.id]).length + (state.snStar ? 0 : 1) + (state.snLeft ? 0 : 1);
+    if (missing) { $("#e_stars").textContent = `Choose an answer in every box (${missing} still empty).`; if (!first) first = "stars"; }
+    if (first) { (first === "stars" ? app.querySelector("[data-star]") : $("#q_" + first)).focus(); return; }
     state.stage = "finish"; state.finished = state.finished || Date.now(); save(); render(); window.scrollTo(0, 0);
   };
 }
 
 function results() {
   const mins = Math.max(1, Math.round(((state.finished || Date.now()) - state.started) / 60000));
-  return `Rounds done: 4 of 4 | Checks used: Round 1 ${state.checks[0]}, Round 2 ${state.checks[1]}, Round 3 ${state.checks[2]}, Bonus ${state.checks[3]} | Hints used: ${state.hints} | Cards flipped: ${state.flips} | Time: about ${mins} min`;
+  const right = DATA.stars.filter((s) => s.answer.includes((state.stars || {})[s.id])).length;
+  return `Rounds done: 4 of 4 | Checks used: Round 1 ${state.checks[0]}, Round 2 ${state.checks[1]}, Round 3 ${state.checks[2]}, Bonus ${state.checks[3]} | Hints used: ${state.hints} | Cards flipped: ${state.flips} | Time: about ${mins} min | Stars on the right card: ${right} of ${DATA.stars.length} | Future supernova: ${state.snStar} | Left behind: ${state.snLeft}`;
 }
 
 function renderFinish(app) {
   const res = results();
-  const full = `Name: ${state.name}\nPeriod: ${state.period}\n${res}\n\nWhere did Earth's carbon come from?\n${state.carbon}\n\nWhere does gold come from?\n${state.gold}`;
+  const full = `Name: ${state.name}\nPeriod: ${state.period}\n${res}` + DATA.qorder.map((k) => `\n\n${DATA.q[k].ask}\n${state[k] || ""}`).join("") + "\n\nStars you already know:\n" + DATA.stars.map((s) => `${s.name}: ${(state.stars || {})[s.id] || ""}`).join("\n");
   const hasForm = CONFIG.formPrefillUrl && CONFIG.formPrefillUrl.includes("STUDENTNAME");
   app.innerHTML = `<section class="panel"><h2>You finished, ${esc(state.name)}</h2>
     <p class="lead">Your star sorted all the way from a cloud of gas to gold. Now send your work to ${esc(CONFIG.teacherName)}.</p>
@@ -412,7 +518,7 @@ function renderFinish(app) {
   if (hasForm) $("#send").onclick = () => {
     const enc = encodeURIComponent;
     const url = CONFIG.formPrefillUrl.replace("STUDENTNAME", enc(state.name)).replace("CLASSPERIOD", enc(state.period))
-      .replace("RESULTS", enc(res)).replace("CARBONANSWER", enc(state.carbon)).replace("GOLDANSWER", enc(state.gold));
+      .replace("RESULTS", enc(res)).replace("IRONANSWER", enc(state.iron || "")).replace("CARBONANSWER", enc(state.carbon || "")).replace("GOLDANSWER", enc(state.gold || ""));
     window.open(url, "_blank", "noopener");
   };
   $("#copy").onclick = async () => {
